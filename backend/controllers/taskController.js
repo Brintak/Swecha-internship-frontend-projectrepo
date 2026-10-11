@@ -36,7 +36,20 @@ const getTasks = async (req, res, next) => {
     todayEnd.setHours(23, 59, 59, 999);
 
     if (filterType === 'overdue') {
-      query.dueDate = { $lt: todayStart };
+      query.$and = [
+        ...(query.$and || []),
+        {
+          $or: [
+            { dueAt: { $lt: new Date() } },
+            {
+              $and: [
+                { $or: [{ dueAt: { $exists: false } }, { dueAt: null }] },
+                { dueDate: { $lt: todayStart } },
+              ],
+            },
+          ],
+        },
+      ];
       query.status = { $ne: 'Completed' };
     } else if (filterType === 'today') {
       query.dueDate = { $gte: todayStart, $lte: todayEnd };
@@ -98,8 +111,10 @@ const getTaskStats = async (req, res, next) => {
     const pending = allTasks.filter((t) => t.status === 'Pending').length;
 
     // Overdue: due date is in the past AND status is not Completed
+    const now = new Date();
     const overdue = allTasks.filter((t) => {
       if (t.status === 'Completed') return false;
+      if (t.dueAt) return new Date(t.dueAt) < now;
       const due = new Date(t.dueDate);
       due.setHours(0, 0, 0, 0);
       return due < todayStart;
@@ -159,7 +174,7 @@ const getTaskById = async (req, res, next) => {
 // @access  Public
 const createTask = async (req, res, next) => {
   try {
-    const { title, description, category, priority, dueDate, status } = req.body;
+    const { title, description, category, priority, dueDate, dueAt, status } = req.body;
 
     // Basic Validation
     if (!title || title.trim() === '') {
@@ -176,14 +191,28 @@ const createTask = async (req, res, next) => {
       });
     }
 
-    const newTask = await Task.create({
+    let parsedDueAt;
+    if (dueAt) {
+      parsedDueAt = new Date(dueAt);
+      if (Number.isNaN(parsedDueAt.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide a valid due date and time',
+        });
+      }
+    }
+
+    const taskData = {
       title: title.trim(),
       description: description ? description.trim() : '',
       category: category || 'Personal',
       priority: priority || 'Medium',
       dueDate: new Date(dueDate),
       status: status || 'Pending',
-    });
+    };
+    if (parsedDueAt) taskData.dueAt = parsedDueAt;
+
+    const newTask = await Task.create(taskData);
 
     res.status(201).json({
       success: true,
@@ -210,13 +239,36 @@ const updateTask = async (req, res, next) => {
     }
 
     // Update fields if provided
-    const { title, description, category, priority, dueDate, status } = req.body;
+    const { title, description, category, priority, dueDate, dueAt, status } = req.body;
 
     if (title !== undefined) task.title = title.trim();
     if (description !== undefined) task.description = description.trim();
     if (category !== undefined) task.category = category;
     if (priority !== undefined) task.priority = priority;
     if (dueDate !== undefined) task.dueDate = new Date(dueDate);
+    if (dueAt !== undefined) {
+      if (!dueAt) {
+        task.dueAt = undefined;
+      } else {
+        const parsedDueAt = new Date(dueAt);
+        if (Number.isNaN(parsedDueAt.getTime())) {
+          return res.status(400).json({
+            success: false,
+            message: 'Please provide a valid due date and time',
+          });
+        }
+        task.dueAt = parsedDueAt;
+      }
+    } else if (dueDate !== undefined) {
+      task.dueAt = undefined;
+    }
+
+    if (dueDate !== undefined && Number.isNaN(task.dueDate.getTime())) {
+        return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid due date',
+        });
+    }
     if (status !== undefined) task.status = status;
 
     const updatedTask = await task.save();

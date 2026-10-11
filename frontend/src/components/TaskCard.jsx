@@ -4,9 +4,20 @@ import { Calendar, Check, Edit2, Trash2, AlertCircle } from 'lucide-react';
 
 const TaskCard = ({ task, onToggleComplete, onEdit, onDelete }) => {
   // Format readable date
+  const getDateKey = (dateValue) => {
+    if (typeof dateValue === 'string') {
+      const match = dateValue.match(/^\d{4}-\d{2}-\d{2}/);
+      if (match) return match[0];
+    }
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return '';
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+
   const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const d = new Date(dateString);
+    const dateKey = getDateKey(dateString);
+    if (!dateKey) return '';
+    const d = new Date(`${dateKey}T12:00:00`);
     return d.toLocaleDateString('en-GB', {
       day: '2-digit',
       month: 'short',
@@ -17,11 +28,18 @@ const TaskCard = ({ task, onToggleComplete, onEdit, onDelete }) => {
   // Smart Feature 1: Overdue Detection
   const checkIsOverdue = () => {
     if (task.status === 'Completed') return false;
+    if (task.dueAt) return new Date(task.dueAt) < new Date();
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const due = new Date(task.dueDate);
-    due.setHours(0, 0, 0, 0);
-    return due < today;
+    const todayKey = getDateKey(today);
+    return getDateKey(task.dueDate) < todayKey;
+  };
+
+  const formatTime = (dueAt) => {
+    if (!dueAt) return 'End of day';
+    const date = new Date(dueAt);
+    return Number.isNaN(date.getTime())
+      ? 'End of day'
+      : date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   };
 
   const isOverdue = checkIsOverdue();
@@ -117,7 +135,7 @@ const TaskCard = ({ task, onToggleComplete, onEdit, onDelete }) => {
           {/* Due Date */}
           <span className={`task-due-date ${isOverdue ? 'is-overdue-text' : ''}`}>
             <Calendar size={13} />
-            Due: {formatDate(task.dueDate)}
+            Due: {formatDate(task.dueDate)} at {formatTime(task.dueAt)}
           </span>
         </div>
       </div>

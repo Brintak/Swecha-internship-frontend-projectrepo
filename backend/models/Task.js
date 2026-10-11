@@ -28,6 +28,9 @@ const taskSchema = new mongoose.Schema(
       type: Date,
       required: [true, 'Due date is required'],
     },
+    dueAt: {
+      type: Date,
+    },
     status: {
       type: String,
       enum: ['Pending', 'In Progress', 'Completed'],
@@ -42,6 +45,8 @@ const taskSchema = new mongoose.Schema(
 // Virtual property or helper to check if a task is overdue
 taskSchema.methods.isOverdue = function () {
   if (this.status === 'Completed') return false;
+  if (this.dueAt) return new Date(this.dueAt) < new Date();
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const taskDue = new Date(this.dueDate);

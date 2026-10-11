@@ -791,6 +791,109 @@
   background-color: #fafbfc;
 }
 
+.reminder-modal {
+  max-width: 560px;
+}
+
+.reminder-intro {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+.reminder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reminder-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.reminder-item-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.reminder-status {
+  padding: 0.12rem 0.45rem;
+  border-radius: var(--radius-full);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.reminder-status.is-overdue {
+  background: var(--danger-light);
+  color: var(--danger-text);
+}
+
+.reminder-status.is-due-today {
+  background: var(--warning-light);
+  color: var(--warning-text);
+}
+
+.reminder-task-title {
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.reminder-due-date,
+.reminder-footer-note {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.reminder-complete-btn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reminder-complete-btn:hover {
+  border-color: var(--success);
+  color: var(--success-text);
+}
+
+.reminder-footer {
+  justify-content: space-between;
+}
+
+@media (max-width: 480px) {
+  .reminder-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .reminder-footer {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+}
+
 /* Delete Modal Specifics */
 .delete-dialog-content {
   text-align: center;

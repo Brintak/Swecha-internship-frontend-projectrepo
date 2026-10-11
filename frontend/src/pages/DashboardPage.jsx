@@ -16,8 +16,37 @@ import TaskCard from '../components/TaskCard';
 import TodayTasksWidget from '../components/TodayTasksWidget';
 import TaskFormModal from '../components/TaskFormModal';
 import DeleteModal from '../components/DeleteModal';
+import ReminderModal from '../components/ReminderModal';
 
 import { ListTodo, Plus, AlertCircle, RefreshCw } from 'lucide-react';
+
+const getLocalDateKey = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getTaskDateKey = (dueDate) => {
+  if (typeof dueDate === 'string') {
+    const datePrefix = dueDate.match(/^\d{4}-\d{2}-\d{2}/);
+    if (datePrefix) return datePrefix[0];
+  }
+
+  const parsedDate = new Date(dueDate);
+  return Number.isNaN(parsedDate.getTime()) ? '' : getLocalDateKey(parsedDate);
+};
+
+const getDismissedReminderIds = (dateKey) => {
+  try {
+    const dismissedIds = JSON.parse(
+      window.localStorage.getItem(`task-reminders-dismissed:${dateKey}`) || '[]'
+    );
+    return Array.isArray(dismissedIds) ? dismissedIds : [];
+  } catch {
+    return [];
+  }
+};
 
 const DashboardPage = ({ showToast }) => {
   // State for task data and statistics
@@ -43,6 +72,8 @@ const DashboardPage = ({ showToast }) => {
   // UI state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [todayDateKey, setTodayDateKey] = useState(() => getLocalDateKey(new Date()));
+  const [reminderTasks, setReminderTasks] = useState([]);
 
   // Modals state
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -105,6 +136,58 @@ const DashboardPage = ({ showToast }) => {
 
     return () => clearTimeout(timer);
   }, [fetchTasksData]);
+
+  useEffect(() => {
+    const now = new Date();
+    const nextLocalDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const timeout = window.setTimeout(
+      () => setTodayDateKey(getLocalDateKey(new Date())),
+      nextLocalDay.getTime() - now.getTime()
+    );
+
+    return () => window.clearTimeout(timeout);
+  }, [todayDateKey]);
+
+  useEffect(() => {
+    if (loading || error) return;
+
+    const dismissedIds = new Set(getDismissedReminderIds(todayDateKey));
+    const dueTasks = allTasks
+      .filter((task) => task.status !== 'Completed' && !dismissedIds.has(task._id))
+      .map((task) => ({ ...task, dateKey: getTaskDateKey(task.dueDate) }))
+      .filter((task) => task.dateKey && task.dateKey <= todayDateKey)
+      .map((task) => ({
+        ...task,
+        reminderStatus:
+          task.dateKey < todayDateKey || (task.dueAt && new Date(task.dueAt) < new Date())
+            ? 'Overdue'
+            : 'Due today',
+      }))
+      .sort((first, second) => {
+        if (first.reminderStatus !== second.reminderStatus) {
+          return first.reminderStatus === 'Overdue' ? -1 : 1;
+        }
+        return first.dateKey.localeCompare(second.dateKey);
+      });
+
+    setReminderTasks(dueTasks);
+  }, [allTasks, error, loading, todayDateKey]);
+
+  const handleDismissReminders = () => {
+    const dismissedIds = new Set(getDismissedReminderIds(todayDateKey));
+    reminderTasks.forEach((task) => dismissedIds.add(task._id));
+
+    try {
+      window.localStorage.setItem(
+        `task-reminders-dismissed:${todayDateKey}`,
+        JSON.stringify([...dismissedIds])
+      );
+    } catch {
+      // Reminders still dismiss for the current page even if storage is unavailable.
+    }
+
+    setReminderTasks([]);
+  };
 
   // Handle Stat Card quick clicks (e.g. clicking 'Overdue' filters by overdue)
   const handleStatCardFilter = (type, val) => {
@@ -340,6 +423,12 @@ const DashboardPage = ({ showToast }) => {
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
         taskTitle={taskToDelete?.title}
+      />
+
+      <ReminderModal
+        tasks={reminderTasks}
+        onDismiss={handleDismissReminders}
+        onMarkComplete={handleToggleComplete}
       />
     </div>
   );

@@ -3,15 +3,34 @@ import React, { useState, useEffect } from 'react';
 import { X, PlusCircle, Edit3 } from 'lucide-react';
 
 const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
-  // Format Date to YYYY-MM-DD for date input
+  const formatLocalDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const getFormattedDate = (dateVal) => {
     if (!dateVal) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      return tomorrow.toISOString().split('T')[0];
+      return formatLocalDate(tomorrow);
     }
+
+    if (typeof dateVal === 'string') {
+      const match = dateVal.match(/^\d{4}-\d{2}-\d{2}/);
+      if (match) return match[0];
+    }
+
     const d = new Date(dateVal);
-    return d.toISOString().split('T')[0];
+    return formatLocalDate(d);
+  };
+
+  const getFormattedTime = (dueAt) => {
+    if (!dueAt) return '23:59';
+    const date = new Date(dueAt);
+    if (Number.isNaN(date.getTime())) return '23:59';
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
   };
 
   const [formData, setFormData] = useState({
@@ -20,6 +39,7 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
     category: 'Personal',
     priority: 'Medium',
     dueDate: getFormattedDate(),
+    dueTime: '09:00',
     status: 'Pending',
   });
 
@@ -34,6 +54,7 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
         category: initialTask.category || 'Personal',
         priority: initialTask.priority || 'Medium',
         dueDate: getFormattedDate(initialTask.dueDate),
+        dueTime: getFormattedTime(initialTask.dueAt),
         status: initialTask.status || 'Pending',
       });
     } else {
@@ -43,6 +64,7 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
         category: 'Personal',
         priority: 'Medium',
         dueDate: getFormattedDate(),
+        dueTime: '09:00',
         status: 'Pending',
       });
     }
@@ -68,6 +90,9 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
     if (!formData.dueDate) {
       newErrors.dueDate = 'Due date is required';
     }
+    if (!formData.dueTime) {
+      newErrors.dueTime = 'Due time is required';
+    }
     return newErrors;
   };
 
@@ -81,7 +106,11 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
 
     try {
       setSubmitting(true);
-      await onSubmit(formData);
+      const dueAt = new Date(`${formData.dueDate}T${formData.dueTime}:00`);
+      await onSubmit({
+        ...formData,
+        dueAt: dueAt.toISOString(),
+      });
       onClose();
     } catch (err) {
       console.error('Failed to save task:', err);
@@ -150,7 +179,7 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
               </div>
 
               {/* Description (Full Width) */}
-              <div className="form-group full-width">
+              <div className="form-group">
                 <label className="form-label" htmlFor="task-desc">
                   Description
                 </label>
@@ -215,6 +244,22 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
                   onChange={handleChange}
                 />
                 {errors.dueDate && <span className="form-error-text">{errors.dueDate}</span>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="task-due-time">
+                  Due Time *
+                </label>
+                <input
+                  id="task-due-time"
+                  name="dueTime"
+                  type="time"
+                  className="form-input"
+                  value={formData.dueTime}
+                  onChange={handleChange}
+                  required
+                />
+                {errors.dueTime && <span className="form-error-text">{errors.dueTime}</span>}
               </div>
             </div>
           </div>
