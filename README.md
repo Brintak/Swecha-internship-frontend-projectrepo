@@ -38,6 +38,7 @@ The primary objective of this project is to provide a clean, complete, and easy-
 
 ## ✨ Key Features
 
+* **User Authentication & Private Workspaces:** Secure sign up and login with bcrypt password hashing and token-based sessions. Each user only sees and manages their own private tasks!
 * **Task Management (CRUD):** Create, view, edit, delete, and mark tasks as completed.
 * **No-Page-Scroll Viewport Layout:** Designed to fit cleanly within standard desktop/laptop viewports without unnecessary vertical window scrolling.
 * **Internal Task-List Scrolling:** As tasks accumulate, only the task list scrolls smoothly within its dedicated container.
@@ -227,7 +228,9 @@ Create a `.env` file in the `backend/` directory:
 PORT=5000
 MONGODB_URI=mongodb://127.0.0.1:27017/smart_todo_db
 CLIENT_URL=http://localhost:5173
+BOOTSTRAP_SECRET=replace-with-a-long-random-value
 ```
+`BOOTSTRAP_SECRET` is used only to create the first owner account and claim existing unowned tasks. Generate a unique value, set it privately in Railway, and remove it after the owner account is created. Never commit real secrets.
 
 ### Frontend (`frontend/.env`)
 Create a `.env` file in the `frontend/` directory:
@@ -249,12 +252,20 @@ VITE_API_URL=http://localhost:5000
 | **PUT** | `/api/tasks/:id` | Update task details or toggle status | `{"status": "Completed"}` |
 | **DELETE** | `/api/tasks/:id` | Delete task by ID | None |
 | **POST** | `/api/tasks/seed` | Populate database with sample tasks for demo/testing | None |
+| **GET** | `/api/auth/setup` | Check whether the first owner account must be created | None |
+| **POST** | `/api/auth/bootstrap` | Create the first owner and claim legacy tasks (requires `BOOTSTRAP_SECRET`) | Name, email, password, setup key |
+| **POST** | `/api/auth/register` | Register another user after owner setup | Name, email, password |
+| **POST** | `/api/auth/login` | Sign in and receive a session token | Email, password |
+| **GET** | `/api/auth/me` | Return the signed-in user's profile | Bearer session token |
+| **POST** | `/api/auth/logout` | Revoke the current session | Bearer session token |
+
+All `/api/tasks` endpoints require a bearer session token and return only the signed-in user's tasks.
 
 ---
 
 ## ☁️ Deployment Guide
 
-> **Public app warning:** This project has no user accounts or authorization. Anyone who can open the deployed site can view, create, edit, and delete tasks in the same database. Do not store private or personal information.
+> **Public app:** The site is publicly reachable, but task endpoints require sign-in and each account can access only its own tasks. The first owner account claims legacy tasks that predate authentication.
 
 ### 1. Push the project to GitHub
 1. Create a repository on [GitHub](https://github.com/new). Choose **Public** if you want the source code to be public; the deployed website can be public either way. Do not initialize the repository with a README, license, or `.gitignore` because this project already has those files.
@@ -293,18 +304,17 @@ VITE_API_URL=http://localhost:5000
 ### 3. Deploy the backend to Railway
 1. Sign in to [Railway](https://railway.app/) and create a project from your GitHub repository.
 2. Set the service's **Root Directory** to `/backend`. The start command is `npm start`; Railway installs dependencies from `backend/package.json`.
-3. Add a Railway **Variable** named `MONGODB_URI` with your MongoDB Atlas connection string. Replace the username/password placeholders, URL-encoding special characters in the password if needed. Do not commit this value.
-4. Do not set `PORT` manually; Railway supplies it. Leave `CLIENT_URL` unset for the first deployment so the frontend can connect while you create it.
-5. Deploy the service. In Railway's service **Settings**, generate a public domain. Your backend URL will look like `https://your-service.up.railway.app`.
-6. Verify it by opening `https://your-service.up.railway.app/api/health`; the response should contain `"success":true`.
+3. Add Railway variables `MONGODB_URI` and `BOOTSTRAP_SECRET`. Use your MongoDB Atlas connection string for the first; generate a unique random value for the second. Never commit or share either value. Do not set `PORT`; Railway supplies it.
+4. Deploy the service. In Railway's service **Settings**, generate a public domain. Your backend URL will look like `https://your-service.up.railway.app`.
+5. Verify it by opening `https://your-service.up.railway.app/api/health`; the response should contain `"success":true`.
 
 ### 4. Deploy the frontend to Netlify
 1. Sign in to [Netlify](https://www.netlify.com/) and choose **Add new site** → **Import an existing project** → **GitHub**. Authorize Netlify and select this repository.
-2. The root `netlify.toml` configures the base directory (`frontend`), build command, output directory, and route fallback. Confirm Netlify shows `npm run build` and `dist` if it asks for build settings.
+2. Set the base directory to `frontend`, build command to `npm run build`, and publish directory to `dist`. `frontend/public/_redirects` provides the client-side route fallback.
 3. In the site's **Environment variables**, add `VITE_API_URL` with the Railway URL from step 3, without a trailing slash; for example `https://your-service.up.railway.app`.
 4. Deploy or trigger a new deploy after adding the variable. Netlify provides a public URL such as `https://your-site.netlify.app`. Open it, then refresh `/dashboard` directly to verify routing and API access.
 5. Copy the Netlify site origin (the URL without a path) and add it to Railway as `CLIENT_URL`, for example `https://your-site.netlify.app`. Railway will redeploy with browser requests limited to that origin. If you later add a custom domain, update `CLIENT_URL` to that origin too.
-6. Test adding a task and refreshing the page. The task should remain because it is stored in MongoDB Atlas.
+6. Open `/login` on the public site. The first account must provide the `BOOTSTRAP_SECRET`; creating it claims legacy tasks with no owner. Remove the secret from Railway after the owner account is created. Later users can register normally, and each account sees only its own tasks.
 
 The site URL is shareable with anyone. If you change frontend code later, push the commit to GitHub and Netlify will build/deploy it automatically. Backend changes are also redeployed by Railway when connected to the same repository.
 
@@ -344,8 +354,6 @@ The site URL is shareable with anyone. If you change frontend code later, push t
 ## 🔮 Future Improvements
 
 While this project is intentionally kept clean and student-friendly, future enhancements could include:
-* User Authentication with JWT (JSON Web Tokens)
-* Multi-user task separation
 * Email or browser push notification reminders
 * Dark mode theme toggle
 * Drag-and-drop Kanban task board

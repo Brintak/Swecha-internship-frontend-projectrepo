@@ -19,7 +19,7 @@ const getTasks = async (req, res, next) => {
     const { search, status, category, priority, filterType, sortBy } = req.query;
 
     // Build query object
-    let query = {};
+    let query = { owner: req.user._id };
 
     // 1. Text Search (Matches title or description case-insensitively)
     if (search && search.trim() !== '') {
@@ -107,7 +107,7 @@ const getTasks = async (req, res, next) => {
 // @access  Public
 const getTaskStats = async (req, res, next) => {
   try {
-    const allTasks = await Task.find({});
+    const allTasks = await Task.find({ owner: req.user._id });
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -161,7 +161,7 @@ const getTaskStats = async (req, res, next) => {
 // @access  Public
 const getTaskById = async (req, res, next) => {
   try {
-    const task = await Task.findById(req.params.id);
+    const task = await Task.findOne({ _id: req.params.id, owner: req.user._id });
 
     if (!task) {
       return res.status(404).json({
@@ -236,6 +236,7 @@ const createTask = async (req, res, next) => {
       startDate: new Date(resolvedStartDate),
       dueDate: new Date(dueDate),
       status: status || 'Pending',
+      owner: req.user._id,
     };
     if (parsedDueAt) taskData.dueAt = parsedDueAt;
 
@@ -256,7 +257,7 @@ const createTask = async (req, res, next) => {
 // @access  Public
 const updateTask = async (req, res, next) => {
   try {
-    let task = await Task.findById(req.params.id);
+    let task = await Task.findOne({ _id: req.params.id, owner: req.user._id });
 
     if (!task) {
       return res.status(404).json({
@@ -339,7 +340,7 @@ const updateTask = async (req, res, next) => {
 // @access  Public
 const deleteTask = async (req, res, next) => {
   try {
-    const task = await Task.findById(req.params.id);
+    const task = await Task.findOne({ _id: req.params.id, owner: req.user._id });
 
     if (!task) {
       return res.status(404).json({
@@ -348,7 +349,7 @@ const deleteTask = async (req, res, next) => {
       });
     }
 
-    await Task.findByIdAndDelete(req.params.id);
+    await Task.deleteOne({ _id: req.params.id, owner: req.user._id });
 
     res.status(200).json({
       success: true,
@@ -415,8 +416,10 @@ const seedSampleTasks = async (req, res, next) => {
       },
     ];
 
-    await Task.deleteMany({});
-    const created = await Task.insertMany(sampleTasks);
+    await Task.deleteMany({ owner: req.user._id });
+    const created = await Task.insertMany(
+      sampleTasks.map((task) => ({ ...task, owner: req.user._id }))
+    );
 
     res.status(201).json({
       success: true,

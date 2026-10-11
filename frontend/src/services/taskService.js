@@ -1,5 +1,6 @@
 // API Service Layer for Communicating with Backend REST Endpoints
 import axios from 'axios';
+import { getSessionToken } from './authService';
 
 // Determine backend API base URL from environment or default to local port 5000
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -10,6 +11,12 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 10000,
+});
+
+api.interceptors.request.use((config) => {
+  const token = getSessionToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
 });
 
 // Fetch all tasks with optional filters (search, status, category, priority, filterType, sortBy)

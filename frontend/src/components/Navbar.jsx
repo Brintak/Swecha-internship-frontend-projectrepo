@@ -1,9 +1,9 @@
 // Responsive Navigation Bar Component
 import React, { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { CheckSquare, LayoutDashboard, PlusCircle, Info, Menu, X } from 'lucide-react';
+import { CheckSquare, LayoutDashboard, PlusCircle, Info, Menu, X, LogIn, LogOut } from 'lucide-react';
 
-const Navbar = ({ onOpenAddTask }) => {
+const Navbar = ({ user, onLogout, onOpenAddTask }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
@@ -25,27 +25,29 @@ const Navbar = ({ onOpenAddTask }) => {
           Home
         </NavLink>
 
-        <NavLink
-          to="/dashboard"
-          className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
-          onClick={closeMobileMenu}
-        >
-          <LayoutDashboard size={17} />
-          Dashboard
-        </NavLink>
-
-        <button
-          type="button"
-          className="nav-link"
-          onClick={() => {
-            closeMobileMenu();
-            if (onOpenAddTask) onOpenAddTask();
-          }}
-          style={{ background: 'none', border: 'none' }}
-        >
-          <PlusCircle size={17} />
-          Add Task
-        </button>
+        {user ? (
+          <>
+            <NavLink
+              to="/dashboard"
+              className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+              onClick={closeMobileMenu}
+            >
+              <LayoutDashboard size={17} />
+              Dashboard
+            </NavLink>
+            <button
+              type="button"
+              className="nav-link"
+              onClick={() => {
+                closeMobileMenu();
+                if (onOpenAddTask) onOpenAddTask();
+              }}
+            >
+              <PlusCircle size={17} />
+              Add Task
+            </button>
+          </>
+        ) : null}
 
         <NavLink
           to="/about"
@@ -55,6 +57,23 @@ const Navbar = ({ onOpenAddTask }) => {
           <Info size={17} />
           About
         </NavLink>
+
+        {user ? (
+          <button type="button" className="nav-link" onClick={onLogout}>
+            <LogOut size={17} />
+            Sign out
+          </button>
+        ) : (
+          <>
+            <NavLink to="/login" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')} onClick={closeMobileMenu}>
+              <LogIn size={17} />
+              Sign in
+            </NavLink>
+            <NavLink to="/register" className="nav-cta-btn" onClick={closeMobileMenu}>
+              Create account
+            </NavLink>
+          </>
+        )}
       </nav>
 
       <button

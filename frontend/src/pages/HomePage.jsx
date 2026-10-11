@@ -1,6 +1,6 @@
-// Landing / Home Page
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import {
   CheckCircle2,
   Calendar,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 const HomePage = () => {
+  const { user } = useAuth();
   return (
     <div className="page-container-scrollable">
       {/* Hero Section */}
@@ -33,10 +34,22 @@ const HomePage = () => {
         </p>
 
         <div className="hero-actions">
-          <Link to="/dashboard" className="btn-primary hero-btn-lg">
-            <span>Open Dashboard</span>
-            <ArrowRight size={18} />
-          </Link>
+          {user ? (
+            <Link to="/dashboard" className="btn-primary hero-btn-lg">
+              <span>Open Dashboard</span>
+              <ArrowRight size={18} />
+            </Link>
+          ) : (
+            <>
+              <Link to="/register" className="btn-primary hero-btn-lg">
+                <span>Get Started Free</span>
+                <ArrowRight size={18} />
+              </Link>
+              <Link to="/login" className="btn-secondary hero-btn-lg">
+                <span>Sign In</span>
+              </Link>
+            </>
+          )}
           <Link to="/about" className="btn-secondary hero-btn-lg">
             <span>Project Architecture</span>
           </Link>

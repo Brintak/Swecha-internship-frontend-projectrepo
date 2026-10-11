@@ -1,6 +1,7 @@
 // Express Router for Task Endpoints
 const express = require('express');
 const router = express.Router();
+const { authenticate } = require('../middleware/authenticate');
 
 const {
   getTasks,
@@ -11,6 +12,8 @@ const {
   deleteTask,
   seedSampleTasks,
 } = require('../controllers/taskController');
+
+router.use(authenticate);
 
 // Route for getting statistics
 router.get('/stats', getTaskStats);
