@@ -133,6 +133,11 @@ const TaskCard = ({ task, onToggleComplete, onEdit, onDelete }) => {
           )}
 
           {/* Due Date */}
+          <span className="task-start-date">
+            <Calendar size={13} />
+            Start: {formatDate(task.startDate || task.dueDate)}
+          </span>
+
           <span className={`task-due-date ${isOverdue ? 'is-overdue-text' : ''}`}>
             <Calendar size={13} />
             Due: {formatDate(task.dueDate)} at {formatTime(task.dueAt)}

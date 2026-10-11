@@ -1,6 +1,16 @@
 // Task Controller - Handles business logic for REST API endpoints
 const Task = require('../models/Task');
 
+const getDateKey = (value) => {
+  if (typeof value === 'string') {
+    const match = value.match(/^\d{4}-\d{2}-\d{2}/);
+    if (match) return match[0];
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+};
+
 // @desc    Get all tasks with optional search, filter, and sorting
 // @route   GET /api/tasks
 // @access  Public
@@ -174,7 +184,7 @@ const getTaskById = async (req, res, next) => {
 // @access  Public
 const createTask = async (req, res, next) => {
   try {
-    const { title, description, category, priority, dueDate, dueAt, status } = req.body;
+    const { title, description, category, priority, startDate, dueDate, dueAt, status } = req.body;
 
     // Basic Validation
     if (!title || title.trim() === '') {
@@ -188,6 +198,22 @@ const createTask = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'Please provide a due date',
+      });
+    }
+
+    const resolvedStartDate = startDate || dueDate;
+    const startDateKey = getDateKey(resolvedStartDate);
+    const dueDateKey = getDateKey(dueDate);
+    if (!startDateKey || !dueDateKey) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide valid start and due dates',
+      });
+    }
+    if (startDateKey > dueDateKey) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date must be on or before the due date',
       });
     }
 
@@ -207,6 +233,7 @@ const createTask = async (req, res, next) => {
       description: description ? description.trim() : '',
       category: category || 'Personal',
       priority: priority || 'Medium',
+      startDate: new Date(resolvedStartDate),
       dueDate: new Date(dueDate),
       status: status || 'Pending',
     };
@@ -239,13 +266,43 @@ const updateTask = async (req, res, next) => {
     }
 
     // Update fields if provided
-    const { title, description, category, priority, dueDate, dueAt, status } = req.body;
+    const { title, description, category, priority, startDate, dueDate, dueAt, status } = req.body;
 
     if (title !== undefined) task.title = title.trim();
     if (description !== undefined) task.description = description.trim();
     if (category !== undefined) task.category = category;
     if (priority !== undefined) task.priority = priority;
-    if (dueDate !== undefined) task.dueDate = new Date(dueDate);
+    const nextDueDate = dueDate !== undefined ? new Date(dueDate) : task.dueDate;
+    const nextStartDate = startDate !== undefined
+      ? new Date(startDate)
+      : task.startDate || (dueDate !== undefined ? nextDueDate : undefined);
+
+    if (dueDate !== undefined && Number.isNaN(nextDueDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid due date',
+      });
+    }
+    if (startDate !== undefined && Number.isNaN(nextStartDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid start date',
+      });
+    }
+    if (startDate !== undefined || dueDate !== undefined) {
+      const startDateKey = getDateKey(nextStartDate || nextDueDate);
+      const dueDateKey = getDateKey(nextDueDate);
+      if (!startDateKey || !dueDateKey || startDateKey > dueDateKey) {
+        return res.status(400).json({
+          success: false,
+          message: 'Start date must be on or before the due date',
+        });
+      }
+    }
+
+    if (dueDate !== undefined) task.dueDate = nextDueDate;
+    if (startDate !== undefined) task.startDate = nextStartDate;
+    else if (dueDate !== undefined && !task.startDate) task.startDate = nextDueDate;
     if (dueAt !== undefined) {
       if (!dueAt) {
         task.dueAt = undefined;
@@ -263,12 +320,6 @@ const updateTask = async (req, res, next) => {
       task.dueAt = undefined;
     }
 
-    if (dueDate !== undefined && Number.isNaN(task.dueDate.getTime())) {
-        return res.status(400).json({
-        success: false,
-        message: 'Please provide a valid due date',
-        });
-    }
     if (status !== undefined) task.status = status;
 
     const updatedTask = await task.save();

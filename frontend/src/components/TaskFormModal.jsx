@@ -26,6 +26,8 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
     return formatLocalDate(d);
   };
 
+  const getTodayDate = () => formatLocalDate(new Date());
+
   const getFormattedTime = (dueAt) => {
     if (!dueAt) return '23:59';
     const date = new Date(dueAt);
@@ -38,6 +40,7 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
     description: '',
     category: 'Personal',
     priority: 'Medium',
+    startDate: getTodayDate(),
     dueDate: getFormattedDate(),
     dueTime: '09:00',
     status: 'Pending',
@@ -53,6 +56,7 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
         description: initialTask.description || '',
         category: initialTask.category || 'Personal',
         priority: initialTask.priority || 'Medium',
+        startDate: getFormattedDate(initialTask.startDate || initialTask.dueDate),
         dueDate: getFormattedDate(initialTask.dueDate),
         dueTime: getFormattedTime(initialTask.dueAt),
         status: initialTask.status || 'Pending',
@@ -63,6 +67,7 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
         description: '',
         category: 'Personal',
         priority: 'Medium',
+        startDate: getTodayDate(),
         dueDate: getFormattedDate(),
         dueTime: '09:00',
         status: 'Pending',
@@ -89,6 +94,11 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
     }
     if (!formData.dueDate) {
       newErrors.dueDate = 'Due date is required';
+    }
+    if (!formData.startDate) {
+      newErrors.startDate = 'Start date is required';
+    } else if (formData.dueDate && formData.startDate > formData.dueDate) {
+      newErrors.startDate = 'Start date must be on or before the due date';
     }
     if (!formData.dueTime) {
       newErrors.dueTime = 'Due time is required';
@@ -231,7 +241,22 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
               </div>
 
               {/* Due Date */}
-              <div className="form-group full-width">
+              <div className="form-group">
+                <label className="form-label" htmlFor="task-start-date">
+                  Start Date *
+                </label>
+                <input
+                  id="task-start-date"
+                  name="startDate"
+                  type="date"
+                  className="form-input"
+                  value={formData.startDate}
+                  onChange={handleChange}
+                />
+                {errors.startDate && <span className="form-error-text">{errors.startDate}</span>}
+              </div>
+
+              <div className="form-group">
                 <label className="form-label" htmlFor="task-due-date">
                   Due Date *
                 </label>
@@ -246,7 +271,7 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit, initialTask = null }) => {
                 {errors.dueDate && <span className="form-error-text">{errors.dueDate}</span>}
               </div>
 
-              <div className="form-group">
+              <div className="form-group full-width">
                 <label className="form-label" htmlFor="task-due-time">
                   Due Time *
                 </label>
